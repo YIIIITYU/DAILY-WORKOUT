@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Daily Workout V12</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex justify-center py-0 sm:py-6">
+
+  <!-- Mobile Container -->
+  <div class="w-full max-w-md bg-slate-50 min-h-screen sm:min-h-[844px] sm:rounded-3xl shadow-xl flex flex-col overflow-hidden border-slate-200 border">
+    
+    <!-- Top Header -->
+    <header class="bg-indigo-600 text-white p-4 pt-6 shadow-md">
+      <div class="flex justify-between items-center mb-3">
+        <h1 class="text-xl font-black tracking-wide">Daily Workout</h1>
+        <select id="mode-select" onchange="changeMode(this.value)" class="bg-indigo-700 text-xs text-white px-2.5 py-1.5 rounded-lg border border-indigo-500 font-bold focus:outline-none">
+          <option value="normal">NORMAL 正常週 (3/2/2)</option>
+          <option value="busy">BUSY 忙碌週 (2/2/2)</option>
+          <option value="maintenance">MAINTAIN 維持週 (1/1/1)</option>
+          <option value="period">PERIOD 經期週 (1/2/3)</option>
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <button id="undo-button" onclick="undoLastAction()" class="bg-white/10 border border-white/20 text-white text-[10px] font-bold py-2 rounded-lg disabled:opacity-40">
+          ↩ 回到上一步
+        </button>
+        <button id="deload-button" onclick="toggleDeload()" class="bg-white/10 border border-white/20 text-white text-[10px] font-bold py-2 rounded-lg">
+          ↓ 本週降載
+        </button>
+      </div>
+      <p id="deload-note" class="hidden text-[9px] text-indigo-100 mb-2"></p>
+
+      <!-- Navigation Tabs -->
+      <div class="flex border-b border-indigo-500 mb-2">
+        <button id="tab-current" onclick="switchTab('current')" class="flex-1 py-1.5 text-center font-bold text-xs border-b-2 border-white text-white">
+          本日/本週
+        </button>
+        <button id="tab-history" onclick="switchTab('history')" class="flex-1 py-1.5 text-center font-bold text-xs border-b-2 border-transparent text-indigo-200 hover:text-white">
+          歷史紀錄 📜
+        </button>
+        <button id="tab-library" onclick="switchTab('library')" class="flex-1 py-1.5 text-center font-bold text-xs border-b-2 border-transparent text-indigo-200 hover:text-white">
+          完整模組庫 📚
+        </button>
+      </div>
+
+      <!-- 本週進度 Dashboard -->
+      <div id="dashboard-section" class="bg-white/10 backdrop-blur-md rounded-2xl p-3 text-xs space-y-2 border border-white/10">
+        <div>
+          <div class="flex justify-between font-bold text-indigo-100 mb-1">
+            <span>TRAIN (肌力/心肺)</span>
+            <span id="p-train-text">0 / 3</span>
+          </div>
+          <div class="w-full bg-indigo-950/40 rounded-full h-2 overflow-hidden">
+            <div id="p-train-bar" class="bg-emerald-400 h-full w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between font-bold text-indigo-100 mb-1">
+            <span>FUNCTION (功能控制)</span>
+            <span id="p-func-text">0 / 2</span>
+          </div>
+          <div class="w-full bg-indigo-950/40 rounded-full h-2 overflow-hidden">
+            <div id="p-func-bar" class="bg-amber-400 h-full w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between font-bold text-indigo-100 mb-1">
+            <span>MOVE (拉筋/恢復)</span>
+            <span id="p-move-text">0 / 2</span>
+          </div>
+          <div class="w-full bg-indigo-950/40 rounded-full h-2 overflow-hidden">
+            <div id="p-move-bar" class="bg-sky-400 h-full w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <main class="flex-1 p-4 space-y-4 overflow-y-auto">
+      
+      <!-- PAGE 1: 當前頁面 -->
+      <div id="page-current" class="space-y-4">
+        <!-- 今日建議菜單 -->
+        <section class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div class="flex justify-between items-center mb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+              <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider">
+                <span id="today-name">星期一</span>
+                <span class="mx-1">·</span>
+                <span id="today-date">--/--</span>
+              </h2>
+            </div>
+            <span id="today-badge" class="hidden text-xs px-2.5 py-0.5 rounded-full font-bold"></span>
+          </div>
+
+          <!-- 菜單內容容器 -->
+          <div id="today-modules-container" class="space-y-3 mb-4"></div>
+
+          <!-- 按鈕動作區 -->
+          <div id="action-buttons" class="space-y-2 pt-2 border-t border-slate-100">
+            <button onclick="markTodayComplete()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition active:scale-[0.98] text-sm">
+              ✓ 照計畫完成
+            </button>
+            
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="downgradeToday('short')" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold py-2 rounded-xl text-xs transition">
+                ⏱ 只有 10 分鐘 (縮短)
+              </button>
+              <button onclick="downgradeToday('tired')" class="bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 font-bold py-2 rounded-xl text-xs transition">
+                🥱 今天很累 (改M1並重排)
+              </button>
+            </div>
+
+            <button onclick="useTVBandToday()" class="w-full bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-200 font-bold py-2 rounded-xl text-xs transition">
+              📺 今天不想流汗 → F5 追劇彈力繩
+            </button>
+            <button onclick="skipToday()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium py-2 rounded-xl text-xs transition">
+              ⏭ 今天取消（不補課，重新平衡）
+            </button>
+          </div>
+        </section>
+
+        <!-- 一週預覽 -->
+        <section class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider">本週課表總覽</h2>
+            <div class="flex gap-2">
+              <button onclick="finishAndArchiveWeek()" class="text-[11px] bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded-lg hover:bg-indigo-100">📦 結算存檔</button>
+              <button onclick="forceReset()" class="text-[11px] bg-rose-100 text-rose-700 font-bold px-2 py-1 rounded-lg hover:bg-rose-200">🧹 重設網頁</button>
+            </div>
+          </div>
+          <div id="week-schedule-container" class="space-y-2"></div>
+          <p class="text-[10px] text-slate-400 mt-1">若點到 Rest Day 但想運動，可直接把休息日隨機或指定移到另一個尚未完成的運動日。</p>
+        </section>      </div>
+
+      <!-- PAGE 2: 歷史紀錄頁面 -->
+      <div id="page-history" class="hidden space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider">過往運動紀錄</h2>
+          <button onclick="clearHistory()" class="text-[11px] bg-rose-50 text-rose-600 font-bold px-2.5 py-1 rounded-lg hover:bg-rose-100 border border-rose-200 transition">🗑 清除所有歷史</button>
+        </div>
+        <div id="history-container" class="space-y-3"></div>
+      </div>
+
+      <!-- PAGE 3: 完整模組庫 -->
+      <div id="page-library" class="hidden space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider">完整模組庫</h2>
+          <span class="text-[10px] text-slate-400">T1–T4 · M1–M6 · F1–F5</span>
+        </div>
+        <div id="module-library-container" class="space-y-2"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    const DAY_NAMES = ['一', '二', '三', '四', '五', '六', '日'];
+    var currentDayIndex = (new Date().getDay() + 6) % 7;
+    var currentMode = 'normal';
+function isFutureDay(dayIdx) {
+      return dayIdx > getTodayIndex();
+    }
+
+    function getTodayIndex() {
+      // JS: Sunday=0, Monday=1 ... Saturday=6
+      return (new Date().getDay() + 6) % 7;
+    }
+
+    function getMondayOfCurrentWeek() {
+      const now = new Date();
+      const idx = (now.getDay() + 6) % 7;
+      const monday = new Date(now);
+      monday.setHours(12, 0, 0, 0); // 中午避免 DST / 時區邊界問題
+      monday.setDate(now.getDate() - idx);
+      return monday;
+    }
+
+    function getDateForDayIndex(dayIdx) {
+      const d = getMondayOfCurrentWeek();
+      d.setDate(d.getDate() + dayIdx);
+      return d;
+    }
+
+    function formatShortDate(d) {
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    }
+
+    const TARGETS = {
+      normal: { train: 3, function: 2, move: 2 },
+      busy: { train: 2, function: 2, move: 2 },
+      maintenance: { train: 1, function: 1, move: 1 },
+      period: { train: 1, function: 2, move: 3 }
+    };
+
+    const MODULE_LIB = {
+T1:{code:'T1',type:'TRAIN',title:'T1 全身肌力',duration:10,desc:'Pamela Reif — 10 MIN FULL BODY WORKOUT (Beginner Friendly)',links:[{label:'▶ 跟著做｜10 min',url:'https://www.youtube.com/watch?v=FGFfqCjtmS8'}]},
+T2:{code:'T2',type:'TRAIN',title:'T2 上身＋核心',duration:20,desc:'Pamela Reif — Upper Body 10 min + Beginner Abs 10 min',links:[{label:'▶ 上身｜10 min',url:'https://www.youtube.com/watch?v=DHOPWvO3ZcI'},{label:'▶ Beginner Core｜10 min',url:'https://www.youtube.com/watch?v=1f8yoFFdkcY'}]},
+T3:{code:'T3',type:'TRAIN',title:'T3 低衝擊心肺',duration:15,desc:'MadFit — 15 MIN BEGINNER CARDIO (No Jumping)',links:[{label:'▶ 跟著做｜15 min',url:'https://www.youtube.com/watch?v=3oitzTfujXs'}]},
+T4:{code:'T4',type:'TRAIN',title:'T4 拜日式 / Yoga Flow',duration:10,desc:'Yoga With Adriene — 10 min Sun Salutation Practice',links:[{label:'▶ 跟著做｜初階拜日式',url:'https://www.youtube.com/watch?v=8AakYeM23sI'}]},
+M1:{code:'M1',type:'MOVE',title:'M1 睡前 / 忙碌日伸展',duration:10,desc:'Yoga With Adriene — 10-Minute Bedtime Yoga',links:[{label:'▶ 跟著做｜10 min',url:'https://www.youtube.com/watch?v=CLDHeV9OI5U'}]},
+M2:{code:'M2',type:'MOVE',title:'M2 久坐下半身舒展',duration:20,desc:'Yoga With Adriene — Yoga For Runners；髖屈肌、臀、腿後側、下背',links:[{label:'▶ 跟著做｜20 min',url:'https://www.youtube.com/watch?v=plL13JF5BHA'}]},
+M3:{code:'M3',type:'MOVE',title:'M3 久坐上半身 Mobility',duration:24,desc:'Yoga With Adriene — Chest & Upper Body Opening Flow',links:[{label:'▶ 跟著做｜24 min',url:'https://www.youtube.com/watch?v=CZJVeUD_Ou8'}]},
+M4:{code:'M4',type:'MOVE',title:'M4 Recovery Yoga',duration:25,desc:'Yoga With Adriene — Yoga For Tired Legs',links:[{label:'▶ 跟著做｜約25 min',url:'https://www.youtube.com/watch?v=2137wAXvufE'}]},
+M5:{code:'M5',type:'MOVE',title:'M5 經期腰腹舒緩 🩸',duration:20,desc:'Yoga With Adriene — Yoga For Women；經期下腹悶脹、腰腿酸脹時優先的溫和恢復流程',links:[{label:'▶ 跟著做｜約20 min',url:'https://www.youtube.com/watch?v=iglbdN1tmF0'}]},
+M6:{code:'M6',type:'MOVE',title:'M6 經期睡前恢復 🌙',duration:10,desc:'Yoga With Adriene — 10-Minute Bedtime Yoga；經期睡不好、疲倦或需要降速時使用',links:[{label:'▶ 跟著做｜10 min',url:'https://www.youtube.com/watch?v=CLDHeV9OI5U'}]},
+F1:{code:'F1',type:'FUNCTION',title:'F1 Balance Base',duration:6,desc:'基礎單腳承重＋小腿控制',actions:[
+{name:'單腳站立',dosage:'20–30秒 × 2組/側',cue:'在穩固支撐物旁練習；先求穩定承重，再逐漸減少手扶。',link:'https://www.southtees.nhs.uk/resources/single-leg-standing/'},
+{name:'雙腳 Calf Raise',dosage:'10–12次 × 2組',cue:'扶固定物，慢慢抬起腳跟、慢慢下降；不要用反彈完成。',link:'https://www.nhsinform.scot/healthy-living/preventing-falls/keeping-well/strength-and-balance-exercises'}]},
+F2:{code:'F2',type:'FUNCTION',title:'F2 Dynamic Stability ⭐',duration:8,desc:'本階段優先：動態單腳穩定與重心控制',actions:[
+{name:'單腳站＋前 / 側 / 後點地',dosage:'各5次 × 2組/側',cue:'可輕扶固定物；支撐腳留在原位，另一腳只輕點地，不把體重轉到點地腳。',link:'https://www.southtees.nhs.uk/resources/balance-and-control/'},
+{name:'Clock / Y Reach（進階示範）',dosage:'目前先看示範',cue:'三方向點地控制穩定、左右差縮小且無膝部不適，再進階。',link:'https://library.theprehabguys.com/vimeo-video/y-balance-exercise/'}]},
+F3:{code:'F3',type:'FUNCTION',title:'F3 Hip & Knee Control',duration:12,desc:'髖膝控制與下肢承重',actions:[
+{name:'Glute Bridge',dosage:'10–15次 × 2組',cue:'雙腳踩穩，臀部收緊後抬起；避免用腰部過度拱起代償。',link:'https://www.southtees.nhs.uk/resources/post-total-hip-replacement-management/'},
+{name:'Standing Hip Abduction',dosage:'8–12次 × 2組/側',cue:'扶穩固物，腿向側方移動；身體保持直立，不靠軀幹側傾把腿甩出去。',link:'https://ruh.nhs.uk/patients/services/physiotherapy/documents/PHY067_Lateral_hip_pain.pdf'},
+{name:'Sit-to-Stand',dosage:'8–12次 × 2組',cue:'肩膀先往腳上方移，再站起；回程控制髖膝彎曲，慢慢坐回椅子。',link:'https://www.southtees.nhs.uk/resources/sit-to-stand-from-chair-combined/'}]},
+F4:{code:'F4',type:'FUNCTION',title:'F4 Functional Core',duration:10,desc:'軀幹穩定、四肢協調與抗旋轉',actions:[
+{name:'Dead Bug',dosage:'6–8次 × 2組/側',cue:'先維持軀幹穩定，再慢慢伸出對側手腳；若腰背控制不住就縮小幅度。',link:'https://www.royalberkshire.nhs.uk/media/ljrncq23/strength-and-conditioning-exercise-class_jul25.pdf'},
+{name:'Bird Dog',dosage:'6次 × 2組/側',cue:'四足跪姿伸出對側手腳；不要讓軀幹或骨盆跟著旋轉。',link:'https://plr.cht.nhs.uk/download/1042/Shoulder%20dislocation%20A4'},
+{name:'Pallof Press 🎯',dosage:'8–10次 × 2組/側',cue:'彈力繩固定於腰至胸高；側身站立向前推，抵抗繩子把軀幹拉轉。',link:'https://library.theprehabguys.com/vimeo-video/pallof-press/'}]},
+F5:{code:'F5',type:'FUNCTION',title:'F5 TV Band / 追劇替代',duration:12,desc:'低門檻彈力繩活動；前三項熟悉後可追劇，Pallof 需專心',actions:[
+{name:'Band Row 📺',dosage:'10–15次 × 2組',cue:'彈力繩固定在前方，手肘往後拉；慢慢回到手臂伸直。',link:'https://www.fhft.nhs.uk/patients-and-visitors/patient-information-library/returning-exercise-after-cancer-diagnosis'},
+{name:'Band External Rotation 📺',dosage:'8–12次 × 2組/側',cue:'手肘約90°並靠近身體，前臂向外轉；可在腋下夾小毛巾幫助定位。',link:'https://rightdecisions.scot.nhs.uk/media/alqcguhk/shoulder-rehabilitation-exercises.pdf'},
+{name:'Calf Raise 📺',dosage:'10–15次 × 2組',cue:'扶固定物，雙腳慢慢踮起再控制下降。',link:'https://www.nhsinform.scot/healthy-living/preventing-falls/keeping-well/strength-and-balance-exercises'},
+{name:'Pallof Press 🎯（選配）',dosage:'8–10次 × 2組/側',cue:'這項不要追劇分心；保持髖與肩朝前，不讓彈力繩把身體拉轉。',link:'https://library.theprehabguys.com/vimeo-video/pallof-press/'}]}
+    };
+
+    var weekData = [];
+    var historyData = [];
+    // 本週顯示目標可因「週間切換模式」而調整；預設等同模式標準目標。
+    var effectiveTargets = null;
+    var undoStack = [];
+    var isDeloaded = false;
+    var preDeloadTargets = null;
+
+    function deepClone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function captureState() {
+      return {
+        mode: currentMode,
+        weekData: deepClone(weekData),
+        historyData: deepClone(historyData),
+        effectiveTargets: deepClone(getEffectiveTargets()),
+        currentDayIndex,
+        isDeloaded,
+        preDeloadTargets: preDeloadTargets ? deepClone(preDeloadTargets) : null
+      };
+    }
+
+    function pushUndoState() {
+      undoStack.push(captureState());
+      if (undoStack.length > 20) undoStack.shift();
+    }
+
+    function undoLastAction() {
+      const prev = undoStack.pop();
+      if (!prev) return;
+      currentMode = prev.mode;
+      weekData = deepClone(prev.weekData);
+      historyData = deepClone(prev.historyData);
+      effectiveTargets = deepClone(prev.effectiveTargets);
+      currentDayIndex = prev.currentDayIndex;
+      isDeloaded = !!prev.isDeloaded;
+      preDeloadTargets = prev.preDeloadTargets ? deepClone(prev.preDeloadTargets) : null;
+      document.getElementById('mode-select').value = currentMode;
+      saveLocal();
+      render();
+    }
+
+    function switchTab(tab) {
+      const tabs = {
+        current: document.getElementById('tab-current'),
+        history: document.getElementById('tab-history'),
+        library: document.getElementById('tab-library')
+      };
+      const pages = {
+        current: document.getElementById('page-current'),
+        history: document.getElementById('page-history'),
+        library: document.getElementById('page-library')
+      };
+      const dash = document.getElementById('dashboard-section');
+
+      Object.keys(tabs).forEach(key => {
+        tabs[key].className = key === tab
+          ? 'flex-1 py-1.5 text-center font-bold text-xs border-b-2 border-white text-white'
+          : 'flex-1 py-1.5 text-center font-bold text-xs border-b-2 border-transparent text-indigo-200 hover:text-white';
+        if (key === tab) pages[key].classList.remove('hidden');
+        else pages[key].classList.add('hidden');
+      });
+
+      if (tab === 'current') dash.classList.remove('hidden');
+      else dash.classList.add('hidden');
+
+      if (tab === 'history') renderHistory();
+      if (tab === 'library') renderModuleLibrary();
+    }
+
+    function getEffectiveTargets() {
+      return effectiveTargets || TARGETS[currentMode] || TARGETS.normal;
+    }
+
+    function countCompletedBefore(dayIdx) {
+      const p = { train: 0, function: 0, move: 0 };
+      weekData.forEach((d, idx) => {
+        if (idx < dayIdx && d.completed) {
+          d.modules.forEach(code => {
+            const type = MODULE_LIB[code]?.type;
+            if (type === 'TRAIN') p.train++;
+            if (type === 'FUNCTION') p.function++;
+            if (type === 'MOVE') p.move++;
+          });
+        }
+      });
+      return p;
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function chooseDistinct(pool, count) {
+      return shuffle(pool).slice(0, Math.min(count, pool.length));
+    }
+
+    function moduleSort(mods) {
+      // 需要專注控制的 FUNCTION 優先，再 TRAIN，最後 MOVE。
+      const rank = { FUNCTION: 0, TRAIN: 1, MOVE: 2 };
+      return [...mods].sort((a, b) => rank[MODULE_LIB[a]?.type] - rank[MODULE_LIB[b]?.type]);
+    }
+
+    function buildModuleQuota(mode) {
+      const t = TARGETS[mode] || TARGETS.normal;
+
+      if (mode === 'period') {
+        // 經期週：低疲勞維持。T3 不作預設；F2 進階 Clock/Y Reach 不納入自動排程。
+        return {
+          train: chooseDistinct(['T1','T2','T4'], 1),
+          func: chooseDistinct(['F1','F3','F5'], 2),
+          move: ['M5','M6', chooseDistinct(['M2','M4'], 1)[0]]
+        };
+      }
+
+      let train = [];
+      if (mode === 'normal') {
+        train = ['T1', 'T2', Math.random() < 0.5 ? 'T3' : 'T4'];
+      } else if (mode === 'busy') {
+        const anchor = Math.random() < 0.5 ? 'T1' : 'T2';
+        train = [anchor, chooseDistinct(['T1','T2','T3','T4'].filter(x => x !== anchor), 1)[0]];
+      } else {
+        train = chooseDistinct(['T1','T2','T4'], 1);
+      }
+      train = train.slice(0, t.train);
+
+      let func = [];
+      if (t.function > 0) func.push('F2');
+      func.push(...chooseDistinct(['F1','F3','F4','F5'], Math.max(0, t.function - func.length)));
+      func = func.slice(0, t.function);
+
+      let move = [];
+      if (t.move > 0) move.push('M1');
+      if (t.move > 1) move.push(chooseDistinct(['M2','M3','M4'], 1)[0]);
+      move = move.slice(0, t.move);
+
+      return { train, func, move };
+    }
+
+    function isHeavyLower(code) {
+      return code === 'T1' || code === 'T3';
+    }
+
+    function hasHeavyLower(day) {
+      return day.modules.some(isHeavyLower);
+    }
+
+    function canPlaceModule(week, dayIdx, code, maxPerDay = 2) {
+      if (dayIdx === 3 && code !== 'M1') return false; // 星期四維持短版忙碌日
+      if (week[dayIdx].isRest) return false;
+      if (week[dayIdx].modules.length >= maxPerDay) return false;
+
+      if (isHeavyLower(code)) {
+        if (dayIdx > 0 && hasHeavyLower(week[dayIdx - 1])) return false;
+        if (dayIdx < 6 && hasHeavyLower(week[dayIdx + 1])) return false;
+      }
+      return true;
+    }
+
+    function placeModules(week, modules, allowedDays, maxPerDay = 2) {
+      modules.forEach(code => {
+        let candidates = shuffle(allowedDays).filter(i => canPlaceModule(week, i, code, maxPerDay));
+
+        // FUNCTION 優先與 TRAIN/MOVE 組合；MOVE 也優先填已有一個模組的日子。
+        if (MODULE_LIB[code]?.type === 'FUNCTION') {
+          const combo = candidates.filter(i => week[i].modules.length === 1);
+          if (combo.length) candidates = combo;
+        } else if (MODULE_LIB[code]?.type === 'MOVE' && code !== 'M1') {
+          const combo = candidates.filter(i => week[i].modules.length === 1);
+          if (combo.length) candidates = combo;
+        }
+
+        if (!candidates.length) {
+          // 剩餘天數很少時允許第三個短模組，避免「取消後」完全補不回配額。
+          candidates = shuffle(allowedDays).filter(i =>
+            !week[i].isRest &&
+            i !== 3 &&
+            week[i].modules.length < 3 &&
+            !(isHeavyLower(code) && ((i > 0 && hasHeavyLower(week[i-1])) || (i < 6 && hasHeavyLower(week[i+1]))))
+          );
+        }
+
+        if (candidates.length) {
+          week[candidates[0]].modules.push(code);
+          week[candidates[0]].modules = moduleSort(week[candidates[0]].modules);
+        }
+      });
+    }
+
+    function generateWeek(mode, previousSignature = '') {
+      const targets = TARGETS[mode] || TARGETS.normal;
+
+      for (let attempt = 0; attempt < 80; attempt++) {
+        const week = DAY_NAMES.map((_, day) => ({
+          day, completed: false, isRest: true, modules: []
+        }));
+        const quota = buildModuleQuota(mode);
+
+        // 每週活動日數：正常週 5–6 天、忙碌週 4 天、維持週 2–3 天。
+        const desiredActive = mode === 'normal'
+          ? (Math.random() < 0.5 ? 5 : 6)
+          : (mode === 'busy' ? 4 : (mode === 'period' ? 5 : (Math.random() < 0.5 ? 2 : 3)));
+
+        // 週四固定為短版日：一般週 M1；經期週改用 M6。
+        const active = [3];
+        const otherDays = shuffle([0,1,2,4,5,6]);
+        while (active.length < desiredActive && otherDays.length) active.push(otherDays.shift());
+        active.sort((a,b) => a-b);
+        active.forEach(i => week[i].isRest = false);
+
+        if (mode === 'period' && quota.move.includes('M6')) week[3].modules = ['M6'];
+        else if (quota.move.includes('M1')) week[3].modules = ['M1'];
+
+        const nonThu = active.filter(i => i !== 3);
+        if (nonThu.length < quota.train.length) continue;
+
+        // TRAIN 先分散到不同活動日，並盡量避免 T1/T3 相鄰。
+        let trainDays = shuffle(nonThu).slice(0, quota.train.length);
+        let trainCodes = shuffle(quota.train);
+        let ok = true;
+
+        // 最多重抽幾次，找到較合理的下肢負荷排列。
+        for (let k = 0; k < 20; k++) {
+          trainDays = shuffle(nonThu).slice(0, quota.train.length).sort((a,b)=>a-b);
+          trainCodes = shuffle(quota.train);
+          const test = DAY_NAMES.map(() => []);
+          trainDays.forEach((d, idx) => test[d].push(trainCodes[idx]));
+          let clash = false;
+          for (let i=0;i<6;i++) {
+            const a = test[i].some(isHeavyLower);
+            const b = test[i+1].some(isHeavyLower);
+            if (a && b) clash = true;
+          }
+          if (!clash) break;
+        }
+
+        trainDays.forEach((d, idx) => week[d].modules.push(trainCodes[idx]));
+
+        // FUNCTION：優先與 TRAIN 同日，排序時 FUNCTION 會在 TRAIN 前。
+        const funcCandidates = shuffle(active.filter(i => i !== 3 && week[i].modules.length < 2));
+        for (const code of shuffle(quota.func)) {
+          let cands = funcCandidates.filter(i => week[i].modules.length < 2);
+          if (!cands.length) { ok = false; break; }
+          const withTrain = cands.filter(i => week[i].modules.some(c => MODULE_LIB[c]?.type === 'TRAIN'));
+          const d = (withTrain.length ? shuffle(withTrain) : shuffle(cands))[0];
+          week[d].modules.push(code);
+          week[d].modules = moduleSort(week[d].modules);
+        }
+        if (!ok) continue;
+
+        // 第二個 MOVE：優先跟較輕的日子組合；不要塞在週四。
+        for (const code of quota.move.filter(x => x !== (mode === 'period' ? 'M6' : 'M1'))) {
+          let cands = shuffle(active.filter(i => i !== 3 && week[i].modules.length < 2));
+          if (!cands.length) { ok = false; break; }
+          const light = cands.filter(i => !week[i].modules.some(isHeavyLower));
+          const d = (light.length ? shuffle(light) : cands)[0];
+          week[d].modules.push(code);
+          week[d].modules = moduleSort(week[d].modules);
+        }
+        if (!ok) continue;
+
+        // 驗證配額一定完整。
+        const counts = {train:0,function:0,move:0};
+        week.forEach(d => d.modules.forEach(code => {
+          const type = MODULE_LIB[code]?.type;
+          if (type === 'TRAIN') counts.train++;
+          if (type === 'FUNCTION') counts.function++;
+          if (type === 'MOVE') counts.move++;
+        }));
+        if (counts.train !== targets.train || counts.function !== targets.function || counts.move !== targets.move) continue;
+
+        const sig = week.map(d => d.modules.join('+') || 'REST').join('|');
+        if (!previousSignature || sig !== previousSignature) return week;
+        if (attempt === 79) return week;
+      }
+
+      // 理論上不會走到這裡；保底使用確定能滿足配額的排法。
+      const fallback = DAY_NAMES.map((_, day) => ({day, completed:false, isRest:true, modules:[]}));
+      if (mode === 'normal') {
+        [[0,['F2','T1']],[2,['T2']],[3,['M1']],[5,['T3']],[6,['F3','M2']]].forEach(([i,m])=>{fallback[i].isRest=false;fallback[i].modules=m;});
+      } else if (mode === 'busy') {
+        [[0,['F2','T1']],[2,['T2']],[3,['M1']],[6,['F5','M2']]].forEach(([i,m])=>{fallback[i].isRest=false;fallback[i].modules=m;});
+      } else if (mode === 'period') {
+        [[0,['M5']],[1,['F1','T1']],[3,['M6']],[5,['F5']],[6,['M2']]].forEach(([i,m])=>{fallback[i].isRest=false;fallback[i].modules=m;});
+      } else {
+        [[0,['F2','T1']],[3,['M1']]].forEach(([i,m])=>{fallback[i].isRest=false;fallback[i].modules=m;});
+      }
+      return fallback;
+    }
+
+    function getWeekSignature(week = weekData) {
+      return (week || []).map(d => d.modules.join('+') || 'REST').join('|');
+    }
+
+    function getCompletedCountsAll() {
+      const p = { train: 0, function: 0, move: 0 };
+      weekData.forEach(d => {
+        if (!d.completed) return;
+        d.modules.forEach(code => {
+          const type = MODULE_LIB[code]?.type;
+          if (type === 'TRAIN') p.train++;
+          if (type === 'FUNCTION') p.function++;
+          if (type === 'MOVE') p.move++;
+        });
+      });
+      return p;
+    }
+
+    function getDeloadTargets(mode, completed) {
+      let base = null;
+      if (mode === 'normal') base = { train: 2, function: 2, move: 2 };
+      if (mode === 'busy') base = { train: 1, function: 2, move: 2 };
+      if (mode === 'maintenance') base = { train: 1, function: 1, move: 1 };
+      if (!base) return null;
+      return {
+        train: Math.max(completed.train, base.train),
+        function: Math.max(completed.function, base.function),
+        move: Math.max(completed.move, base.move)
+      };
+    }
+
+    function chooseDeloadModules(deficit) {
+      const out = [];
+      const completedCodes = new Set(weekData.filter(d => d.completed).flatMap(d => d.modules));
+
+      let trainPool = currentMode === 'maintenance'
+        ? ['T1','T2','T4']
+        : ['T2','T4','T1','T3'];
+      trainPool = trainPool.filter(x => !completedCodes.has(x)).concat(trainPool);
+      out.push(...chooseDistinct([...new Set(trainPool)], deficit.train));
+
+      let funcPool = currentMode === 'maintenance'
+        ? ['F1','F5','F3']
+        : ['F2','F1','F5','F3','F4'];
+      funcPool = funcPool.filter(x => !completedCodes.has(x)).concat(funcPool);
+      out.push(...chooseDistinct([...new Set(funcPool)], deficit.function));
+
+      let movePool = ['M1','M2','M4','M3'].filter(x => !completedCodes.has(x));
+      movePool = movePool.concat(['M1','M2','M4','M3']);
+      out.push(...chooseDistinct([...new Set(movePool)], deficit.move));
+      return out;
+    }
+
+    function replanFromTodayForTargets(targets, deloadPool) {
+      const startIdx = getTodayIndex();
+      const completed = getCompletedCountsExcludingFuture(startIdx - 1);
+      const deficit = {
+        train: Math.max(0, targets.train - completed.train),
+        function: Math.max(0, targets.function - completed.function),
+        move: Math.max(0, targets.move - completed.move)
+      };
+
+      for (let i = startIdx; i < 7; i++) {
+        if (!weekData[i].completed) {
+          weekData[i].modules = [];
+          weekData[i].isRest = true;
+        }
+      }
+
+      let codes = deloadPool ? chooseDeloadModules(deficit) : chooseRemainingModules(deficit);
+      const days = [];
+      for (let i = startIdx; i < 7; i++) if (!weekData[i].completed) days.push(i);
+
+      if (days.includes(3) && deficit.move > 0) {
+        weekData[3].modules = ['M1'];
+        weekData[3].isRest = false;
+        const ix = codes.findIndex(c => MODULE_LIB[c]?.type === 'MOVE');
+        if (ix >= 0) codes.splice(ix, 1);
+      }
+
+      let active = days.filter(i => !(i === 3 && weekData[i].modules.length));
+      const alreadyRest = weekData.slice(0, startIdx).some(d => d.isRest && !d.modules.length);
+      const minDaysAt2 = Math.ceil(codes.length / 2);
+      if (!alreadyRest && active.length > minDaysAt2) {
+        const rest = shuffle(active)[0];
+        active = active.filter(i => i !== rest);
+        weekData[rest].isRest = true;
+      }
+
+      const maxPerDay = Math.max(2, Math.ceil(codes.length / Math.max(1, active.length)));
+      for (const code of moduleSort(codes)) {
+        let cands = active.filter(i => weekData[i].modules.length < maxPerDay);
+        if (isHeavyLower(code)) {
+          const safe = cands.filter(i =>
+            !(i > 0 && hasHeavyLower(weekData[i-1])) &&
+            !(i < 6 && hasHeavyLower(weekData[i+1]))
+          );
+          if (safe.length) cands = safe;
+        }
+        if (!cands.length) continue;
+        cands = shuffle(cands);
+        cands.sort((a,b) => weekData[a].modules.length - weekData[b].modules.length);
+        const d = cands[0];
+        weekData[d].modules.push(code);
+        weekData[d].modules = moduleSort(weekData[d].modules);
+        weekData[d].isRest = false;
+      }
+      days.forEach(i => {
+        if (!weekData[i].completed && !weekData[i].modules.length) weekData[i].isRest = true;
+      });
+    }
+
+    function toggleDeload() {
+      if (currentMode === 'period') return;
+      pushUndoState();
+
+      if (!isDeloaded) {
+        const completed = getCompletedCountsAll();
+        preDeloadTargets = deepClone(getEffectiveTargets());
+        effectiveTargets = getDeloadTargets(currentMode, completed);
+        isDeloaded = true;
+        replanFromTodayForTargets(effectiveTargets, true);
+      } else {
+        effectiveTargets = preDeloadTargets
+          ? deepClone(preDeloadTargets)
+          : { ...(TARGETS[currentMode] || TARGETS.normal) };
+        isDeloaded = false;
+        preDeloadTargets = null;
+        replanFromTodayForTargets(effectiveTargets, false);
+      }
+      saveLocal();
+      render();
+    }
+
+    function countCompletedThrough(dayIdx) {
+      const p = { train: 0, function: 0, move: 0 };
+      weekData.forEach((d, idx) => {
+        if (idx <= dayIdx && d.completed) {
+          d.modules.forEach(code => {
+            const type = MODULE_LIB[code]?.type;
+            if (type === 'TRAIN') p.train++;
+            if (type === 'FUNCTION') p.function++;
+            if (type === 'MOVE') p.move++;
+          });
+        }
+      });
+      return p;
+    }
+
+    function changeMode(val) {
+      pushUndoState();
+      const realTodayIdx = getTodayIndex();
+
+      // 回頭補登時，以目前查看的過去日期作為模式生效日；
+      // 正常操作則仍從真實今天開始，不能把模式預先套到未來。
+      const switchIdx = currentDayIndex < realTodayIdx ? currentDayIndex : realTodayIdx;
+      currentMode = val;
+      isDeloaded = false;
+      preDeloadTargets = null;
+      const standard = TARGETS[val] || TARGETS.normal;
+
+      // 生效日當天若已完成，也要抵扣新模式的整週目標。
+      const completed = countCompletedThrough(switchIdx);
+      let remaining = {
+        train: Math.max(0, standard.train - completed.train),
+        function: Math.max(0, standard.function - completed.function),
+        move: Math.max(0, standard.move - completed.move)
+      };
+
+      // 生效日起，只清除尚未完成的舊排程；補登完成內容完整保留。
+      for (let i = switchIdx; i < 7; i++) {
+        if (!weekData[i].completed) {
+          weekData[i].modules = [];
+          weekData[i].isRest = true;
+        }
+      }
+
+      const firstSchedulable = weekData[switchIdx]?.completed ? switchIdx + 1 : switchIdx;
+      const days = [];
+      for (let i = firstSchedulable; i < 7; i++) {
+        if (!weekData[i].completed) days.push(i);
+      }
+
+      // 晚切換時加入容量上限。PERIOD 特別保守：
+      // 原則一日一模組；剩餘至少 3 天時最多只允許其中一天再加一個 F/M。
+      let capacity = val === 'period'
+        ? days.length + (days.length >= 3 ? 1 : 0)
+        : days.length * 2;
+
+      let capped = { train: 0, function: 0, move: 0 };
+      if (val === 'period') {
+        // 經期週晚切換優先保留恢復與功能控制，不為湊數硬塞 TRAIN。
+        capped.move = Math.min(remaining.move, capacity);
+        capacity -= capped.move;
+        capped.function = Math.min(remaining.function, capacity);
+        capacity -= capped.function;
+        capped.train = Math.min(remaining.train, capacity);
+      } else {
+        for (const key of ['train','function','move']) {
+          capped[key] = Math.min(remaining[key], capacity);
+          capacity -= capped[key];
+        }
+      }
+      remaining = capped;
+
+      // effectiveTargets 反映本週實際可完成目標；已完成內容不會被抹掉。
+      effectiveTargets = {
+        train: completed.train + remaining.train,
+        function: completed.function + remaining.function,
+        move: completed.move + remaining.move
+      };
+
+      let remainingCodes = chooseRemainingModules({ ...remaining });
+
+      // 若週四本身仍待排，才套用短版恢復日。
+      if (days.includes(3) && remaining.move > 0) {
+        const thursdayMove = val === 'period' ? 'M6' : 'M1';
+        weekData[3].modules = [thursdayMove];
+        weekData[3].isRest = false;
+        const exact = remainingCodes.indexOf(thursdayMove);
+        if (exact >= 0) remainingCodes.splice(exact,1);
+        else {
+          const anyMove = remainingCodes.findIndex(c => MODULE_LIB[c]?.type === 'MOVE');
+          if (anyMove >= 0) remainingCodes.splice(anyMove,1);
+        }
+      }
+
+      const available = days.filter(i => !(i === 3 && weekData[i].modules.length));
+
+      if (val === 'period') {
+        // PERIOD 先平均一日一模組；第二模組只允許 F+M / M+F，不疊 TRAIN。
+        for (const code of moduleSort(remainingCodes)) {
+          let cands = available.filter(i => weekData[i].modules.length === 0);
+          if (!cands.length) {
+            cands = available.filter(i => {
+              if (weekData[i].modules.length >= 2) return false;
+              const newType = MODULE_LIB[code]?.type;
+              const oldTypes = weekData[i].modules.map(c => MODULE_LIB[c]?.type);
+              return newType !== 'TRAIN' &&
+                     !oldTypes.includes('TRAIN') &&
+                     oldTypes.every(t => t === 'FUNCTION' || t === 'MOVE');
+            });
+          }
+          if (!cands.length) continue;
+          cands = shuffle(cands);
+          cands.sort((a,b) => weekData[a].modules.length - weekData[b].modules.length);
+          const d = cands[0];
+          weekData[d].modules.push(code);
+          weekData[d].modules = moduleSort(weekData[d].modules);
+          weekData[d].isRest = false;
+        }
+      } else if (remainingCodes.length && available.length) {
+        // NORMAL / BUSY / MAINTAIN：若剩餘天數有餘裕，至少保留 1 個 Rest Day。
+        // 只有剩餘天數太少、會導致配額無法完成時，才使用全部可用日期。
+        let activeDays = [...available];
+        const alreadyHasRestBefore = weekData
+          .slice(0, firstSchedulable)
+          .some(d => d.isRest && d.modules.length === 0);
+
+        const minDaysNeededAt2 = Math.ceil(remainingCodes.length / 2);
+        if (!alreadyHasRestBefore && activeDays.length > minDaysNeededAt2) {
+          const restIdx = shuffle(activeDays)[0];
+          activeDays = activeDays.filter(i => i !== restIdx);
+          weekData[restIdx].modules = [];
+          weekData[restIdx].isRest = true;
+        }
+
+        const maxPerDay = Math.max(2, Math.ceil(remainingCodes.length / Math.max(1, activeDays.length)));
+        for (const code of moduleSort(remainingCodes)) {
+          let cands = activeDays.filter(i => weekData[i].modules.length < maxPerDay);
+          if (isHeavyLower(code)) {
+            const safe = cands.filter(i =>
+              !(i > 0 && hasHeavyLower(weekData[i-1])) &&
+              !(i < 6 && hasHeavyLower(weekData[i+1]))
+            );
+            if (safe.length) cands = safe;
+          }
+          if (!cands.length) continue;
+          cands = shuffle(cands);
+          cands.sort((a,b) => weekData[a].modules.length - weekData[b].modules.length);
+          const d = cands[0];
+          weekData[d].modules.push(code);
+          weekData[d].modules = moduleSort(weekData[d].modules);
+          weekData[d].isRest = false;
+        }
+      }
+
+      for (let i=firstSchedulable;i<7;i++) {
+        if (!weekData[i].completed && weekData[i].modules.length===0) weekData[i].isRest=true;
+      }
+
+      document.getElementById('mode-select').value=currentMode;
+      saveLocal();
+      render();
+    }
+
+    // 不再重新載入頁面：直接清除 App 狀態、產生新課表並即時重繪。
+    function forceReset() {
+      pushUndoState();
+      // 只重設目前這週與模式；歷史紀錄保留。
+      currentMode = 'normal';
+      isDeloaded = false;
+      preDeloadTargets = null;
+      effectiveTargets = { ...TARGETS.normal };
+      currentDayIndex = getTodayIndex();
+      weekData = generateWeek('normal', getWeekSignature());
+      document.getElementById('mode-select').value = 'normal';
+      saveLocal();
+      switchTab('current');
+      render();
+
+      // 即時視覺回饋。
+      const badge = document.getElementById('today-badge');
+      if (badge) {
+        badge.innerText = '本週已重設 ✓';
+        badge.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-700 block';
+        setTimeout(() => {
+          renderTodayCard();
+        }, 900);
+      }
+    }
+
+    function markTodayComplete() {
+      pushUndoState();
+      if (isFutureDay(currentDayIndex)) return;
+      weekData[currentDayIndex].completed = true;
+      saveLocal();
+      render();
+    }
+
+    function getCompletedCountsExcludingFuture(startIdx) {
+      let p = { train: 0, move: 0, function: 0 };
+      weekData.forEach((d, idx) => {
+        if (idx <= startIdx && d.completed) {
+          d.modules.forEach(code => {
+            const m = MODULE_LIB[code];
+            if (!m) return;
+            if (m.type === 'TRAIN') p.train++;
+            if (m.type === 'MOVE') p.move++;
+            if (m.type === 'FUNCTION') p.function++;
+          });
+        }
+      });
+      return p;
+    }
+
+    function chooseRemainingModules(deficit) {
+      const out = [];
+      const completedCodes = new Set(
+        weekData.filter(d => d.completed).flatMap(d => d.modules)
+      );
+
+      if (currentMode === 'period') {
+        let trainPool = ['T1','T2','T4'].filter(x => !completedCodes.has(x));
+        if (trainPool.length < deficit.train) trainPool = ['T1','T2','T4'];
+        out.push(...chooseDistinct(trainPool, deficit.train));
+
+        let funcPool = ['F1','F3','F5'].filter(x => !completedCodes.has(x));
+        if (funcPool.length < deficit.function) funcPool = ['F1','F3','F5'];
+        out.push(...chooseDistinct(funcPool, deficit.function));
+
+        let movePool = ['M5','M6','M2','M4'].filter(x => !completedCodes.has(x));
+        if (movePool.length < deficit.move) movePool = ['M5','M6','M2','M4'];
+        out.push(...chooseDistinct(movePool, deficit.move));
+        return out;
+      }
+
+      let trainPool = ['T1','T2','T3','T4'].filter(x => !completedCodes.has(x));
+      if (trainPool.length < deficit.train) trainPool = ['T1','T2','T3','T4'];
+      out.push(...chooseDistinct(trainPool, deficit.train));
+
+      let funcPool = [];
+      if (deficit.function > 0 && !completedCodes.has('F2')) funcPool.push('F2');
+      funcPool.push(...chooseDistinct(['F1','F3','F4','F5'].filter(x => !completedCodes.has(x)), Math.max(0, deficit.function - funcPool.length)));
+      if (funcPool.length < deficit.function) {
+        funcPool.push(...chooseDistinct(['F1','F3','F4','F5'], deficit.function - funcPool.length));
+      }
+      out.push(...funcPool.slice(0, deficit.function));
+
+      let movePool = ['M2','M3','M4'].filter(x => !completedCodes.has(x));
+      if (!completedCodes.has('M1')) movePool.unshift('M1');
+      if (movePool.length < deficit.move) movePool.push('M2','M3','M4');
+      out.push(...chooseDistinct([...new Set(movePool)], deficit.move));
+
+      return out;
+    }
+
+    function rebalanceAfter(dayIdx) {
+      const targets = getEffectiveTargets();
+      const done = getCompletedCountsExcludingFuture(dayIdx);
+      const deficit = {
+        train: Math.max(0, targets.train - done.train),
+        function: Math.max(0, targets.function - done.function),
+        move: Math.max(0, targets.move - done.move)
+      };
+
+      // 清空未來尚未完成的排程，重新依「剩餘配額」安排。
+      for (let i = dayIdx + 1; i < 7; i++) {
+        if (!weekData[i].completed) {
+          weekData[i].modules = [];
+          weekData[i].isRest = true;
+        }
+      }
+
+      // 若週四仍在未來且還缺 MOVE，先保留忙碌日 M1。
+      if (dayIdx < 3 && deficit.move > 0 && !weekData[3].completed) {
+        weekData[3].modules = [currentMode === 'period' ? 'M6' : 'M1'];
+        weekData[3].isRest = false;
+        deficit.move--;
+      }
+
+      const future = [];
+      for (let i = dayIdx + 1; i < 7; i++) {
+        if (i !== 3 && !weekData[i].completed) future.push(i);
+      }
+
+      const totalNeeded = deficit.train + deficit.function + deficit.move;
+      if (totalNeeded === 0) return;
+
+      if (future.length === 0) return; // 本週已無剩餘日期可排。
+
+      // 有足夠空間時保留未來休息日；配額很多時則使用所有剩餘日期，避免少排。
+      const pastHasRest = weekData.slice(0, dayIdx + 1).some(d => d.isRest && d.modules.length === 0);
+      const minDaysNeededAt2 = Math.ceil(totalNeeded / 2);
+      let activeFuture = [...future];
+
+      if (!pastHasRest && future.length > minDaysNeededAt2) {
+        const rest = shuffle(future)[0];
+        activeFuture = future.filter(i => i !== rest);
+      }
+
+      activeFuture.forEach(i => weekData[i].isRest = false);
+
+      const modules = chooseRemainingModules(deficit);
+      const maxPerDay = Math.max(2, Math.ceil(modules.length / Math.max(1, activeFuture.length)));
+
+      // 分類後交錯放置，避免同一天全是同類。
+      const ordered = [];
+      const trains = modules.filter(c => MODULE_LIB[c]?.type === 'TRAIN');
+      const funcs = modules.filter(c => MODULE_LIB[c]?.type === 'FUNCTION');
+      const moves = modules.filter(c => MODULE_LIB[c]?.type === 'MOVE');
+      while (trains.length || funcs.length || moves.length) {
+        if (funcs.length) ordered.push(funcs.shift());
+        if (trains.length) ordered.push(trains.shift());
+        if (moves.length) ordered.push(moves.shift());
+      }
+
+      ordered.forEach(code => {
+        let cands = activeFuture.filter(i => weekData[i].modules.length < maxPerDay);
+
+        // T1/T3 優先避免相鄰；若會導致配額失敗，才放寬。
+        if (isHeavyLower(code)) {
+          const safe = cands.filter(i =>
+            !(i > 0 && hasHeavyLower(weekData[i-1])) &&
+            !(i < 6 && hasHeavyLower(weekData[i+1]))
+          );
+          if (safe.length) cands = safe;
+        }
+
+        // 先放目前模組數最少的日子，真正平均分散。
+        cands = shuffle(cands);
+        cands.sort((a,b) => weekData[a].modules.length - weekData[b].modules.length);
+        if (!cands.length) {
+          // 最後保底：任何剩餘日都可以，配額完整優先。
+          cands = [...activeFuture].sort((a,b) => weekData[a].modules.length - weekData[b].modules.length);
+        }
+        const d = cands[0];
+        weekData[d].modules.push(code);
+        weekData[d].modules = moduleSort(weekData[d].modules);
+        weekData[d].isRest = false;
+      });
+
+      // 沒排到內容的未來日就是 Rest。
+      future.forEach(i => {
+        if (weekData[i].modules.length === 0) weekData[i].isRest = true;
+      });
+    }
+
+    function downgradeToday(type) {
+      pushUndoState();
+      if (isFutureDay(currentDayIndex)) return;
+      const today = weekData[currentDayIndex];
+
+      if (type === 'tired') {
+        // 經期週疲累時改成經期恢復模組；其他週維持 M1。
+        today.modules = [currentMode === 'period' ? (currentDayIndex === 3 ? 'M6' : 'M5') : 'M1'];
+        today.isRest = false;
+        today.completed = true;
+        rebalanceAfter(currentDayIndex);
+      } else if (type === 'short') {
+        // 優先保留原計畫中 10 分鐘內的模組；沒有才用短版 F2 / T1 / M1。
+        const shortOriginal = today.modules.find(code => (MODULE_LIB[code]?.duration || 99) <= 10);
+        if (shortOriginal) {
+          today.modules = [shortOriginal];
+        } else {
+          const p = calculateProgress();
+          const t = getEffectiveTargets();
+          if (p.function < t.function) today.modules = ['F2'];
+          else if (p.train < t.train) today.modules = ['T1'];
+          else today.modules = ['M1'];
+        }
+        today.isRest = false;
+        today.completed = true;
+        rebalanceAfter(currentDayIndex);
+      }
+
+      saveLocal();
+      render();
+    }
+
+    function useTVBandToday() {
+      pushUndoState();
+      if (isFutureDay(currentDayIndex)) return;
+      const today = weekData[currentDayIndex];
+      today.modules = ['F5'];
+      today.isRest = false;
+      today.completed = true;
+      rebalanceAfter(currentDayIndex);
+      saveLocal();
+      render();
+    }
+
+    function skipToday() {
+      pushUndoState();
+      if (isFutureDay(currentDayIndex)) return;
+      const today = weekData[currentDayIndex];
+      today.completed = false;
+      today.modules = [];
+      today.isRest = true;
+
+      // 真正重新平衡「剩下的週」，不把今天的課硬塞到明天。
+      rebalanceAfter(currentDayIndex);
+      saveLocal();
+      render();
+    }
+
+    function finishAndArchiveWeek() {
+      pushUndoState();
+      const p = calculateProgress();
+      const t = getEffectiveTargets();
+      
+      const completedDays = weekData
+        .filter(d => d.completed)
+        .map(d => ({
+          day: d.day,
+          date: formatShortDate(getDateForDayIndex(d.day)),
+          modules: [...d.modules]
+        }));
+
+      const record = {
+        id: Date.now(),
+        dateStr: new Date().toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' }),
+        mode: currentMode,
+        progress: p,
+        target: t,
+        daysCompleted: completedDays.length,
+        completedDays: completedDays
+      };
+
+      historyData.unshift(record);
+      const oldSig = getWeekSignature();
+      isDeloaded = false;
+      preDeloadTargets = null;
+      effectiveTargets = { ...(TARGETS[currentMode] || TARGETS.normal) };
+      weekData = generateWeek(currentMode, oldSig);
+      currentDayIndex = getTodayIndex();
+      saveLocal();
+      render();
+    }
+
+    // 關鍵修復：同步寫回空陣列至本地，並重繪歷史頁面
+    function clearHistory() {
+      pushUndoState();
+      historyData = [];
+      saveLocal();
+      renderHistory();
+    }
+
+    function calculateProgress() {
+      let p = { train: 0, move: 0, function: 0 };
+      weekData.forEach(d => {
+        if (d.completed) {
+          d.modules.forEach(mCode => {
+            const m = MODULE_LIB[mCode];
+            if (m && m.type === 'TRAIN') p.train++;
+            if (m && m.type === 'MOVE') p.move++;
+            if (m && m.type === 'FUNCTION') p.function++;
+          });
+        }
+      });
+      return p;
+    }
+
+    function normalizeWeekState() {
+      weekData.forEach(d => {
+        if (!d.completed && (!d.modules || d.modules.length === 0)) {
+          d.modules = [];
+          d.isRest = true;
+        } else if (d.modules && d.modules.length > 0) {
+          d.isRest = false;
+        }
+      });
+    }
+
+    function renderHeader() {
+      const p = calculateProgress();
+      const t = getEffectiveTargets();
+
+      document.getElementById('p-train-text').innerText = p.train + ' / ' + t.train;
+      document.getElementById('p-train-bar').style.width = Math.min(100, (p.train / t.train) * 100) + '%';
+
+      document.getElementById('p-func-text').innerText = p.function + ' / ' + t.function;
+      document.getElementById('p-func-bar').style.width = Math.min(100, (p.function / t.function) * 100) + '%';
+
+      document.getElementById('p-move-text').innerText = p.move + ' / ' + t.move;
+      document.getElementById('p-move-bar').style.width = Math.min(100, (p.move / t.move) * 100) + '%';
+
+      const undoBtn = document.getElementById('undo-button');
+      if (undoBtn) undoBtn.disabled = undoStack.length === 0;
+
+      const deloadBtn = document.getElementById('deload-button');
+      const deloadNote = document.getElementById('deload-note');
+      if (deloadBtn) {
+        if (currentMode === 'period') {
+          deloadBtn.disabled = true;
+          deloadBtn.classList.add('opacity-40');
+          deloadBtn.innerText = '↓ PERIOD 不另降載';
+        } else {
+          deloadBtn.disabled = false;
+          deloadBtn.classList.remove('opacity-40');
+          deloadBtn.innerText = isDeloaded ? '↺ 恢復原計畫' : '↓ 本週降載';
+        }
+      }
+      if (deloadNote) {
+        if (isDeloaded) {
+          const map = {
+            normal: 'NORMAL 降載：2/2/2',
+            busy: 'BUSY 降載：1/2/2',
+            maintenance: 'MAINTAIN 降載：1/1/1，改用低負擔模組池'
+          };
+          deloadNote.innerText = map[currentMode] || '';
+          deloadNote.classList.remove('hidden');
+        } else {
+          deloadNote.classList.add('hidden');
+        }
+      }
+    }
+
+    function getSwappableWorkoutDays(restIdx) {
+      // 只能把「尚未完成、而且原本有課」的日期換成新的 Rest Day。
+      // 優先允許今天以後；若使用者點回本週較早的 Rest Day，也不動已完成紀錄。
+      return weekData
+        .map((d, idx) => ({ d, idx }))
+        .filter(x =>
+          x.idx !== restIdx &&
+          !x.d.completed &&
+          x.d.modules &&
+          x.d.modules.length > 0
+        )
+        .map(x => x.idx);
+    }
+
+    function swapRestDay(restIdx, workoutIdx) {
+      if (restIdx > getTodayIndex()) return;
+      pushUndoState();
+      const rest = weekData[restIdx];
+      const workout = weekData[workoutIdx];
+      if (!rest || !workout || workout.completed || !workout.modules.length) return;
+
+      // 把指定運動日的整組課表搬到今天，原運動日變 Rest。
+      rest.modules = [...workout.modules];
+      rest.isRest = false;
+      rest.completed = false;
+
+      workout.modules = [];
+      workout.isRest = true;
+      workout.completed = false;
+
+      currentDayIndex = restIdx;
+      saveLocal();
+      render();
+    }
+
+    function randomizeRestDay(restIdx) {
+      const choices = getSwappableWorkoutDays(restIdx);
+      if (!choices.length) return;
+      const futureChoices = choices.filter(i => i > restIdx);
+      const pool = futureChoices.length ? futureChoices : choices;
+      const chosen = pool[Math.floor(Math.random() * pool.length)];
+      swapRestDay(restIdx, chosen);
+    }
+
+    function applySpecifiedRestDay(restIdx) {
+      const select = document.getElementById('rest-swap-select');
+      if (!select || select.value === '') return;
+      swapRestDay(restIdx, Number(select.value));
+    }
+
+    function renderTodayCard() {
+      const today = weekData[currentDayIndex];
+      const container = document.getElementById('today-modules-container');
+      const badge = document.getElementById('today-badge');
+      const actionBtns = document.getElementById('action-buttons');
+
+      const selectedDate = getDateForDayIndex(currentDayIndex);
+      const isActualToday = currentDayIndex === getTodayIndex();
+      document.getElementById('today-name').innerText =
+        (isActualToday ? '今天・星期' : '星期') + DAY_NAMES[currentDayIndex];
+      document.getElementById('today-date').innerText = formatShortDate(selectedDate);
+      container.innerHTML = '';
+
+      if (!today) return;
+
+      if (isFutureDay(currentDayIndex)) {
+        badge.innerText = '未來課表 👀';
+        badge.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-700 block';
+        actionBtns.classList.add('hidden');
+      } else if (today.completed) {
+        badge.innerText = '已完成 🎉';
+        badge.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 block';
+        actionBtns.classList.add('hidden');
+      } else if (today.isRest && today.modules.length === 0) {
+        badge.innerText = '休息日 ☕';
+        badge.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 block';
+        actionBtns.classList.add('hidden');
+      } else {
+        badge.className = 'hidden';
+        actionBtns.classList.remove('hidden');
+      }
+
+      if (today.isRest && today.modules.length === 0) {
+        if (isFutureDay(currentDayIndex)) {
+          container.innerHTML = `
+            <div class="py-8 text-center text-slate-400">
+              <p class="text-3xl mb-1">🧘</p>
+              <p class="text-xs font-bold">這天目前排定為 Rest Day。</p>
+              <p class="text-[10px] mt-2">未來日期可查看，但要等到當天才能調整或執行操作。</p>
+            </div>
+          `;
+          return;
+        }
+
+        const choices = getSwappableWorkoutDays(currentDayIndex);
+        const futureChoices = choices.filter(i => i > currentDayIndex);
+        const usableChoices = futureChoices.length ? futureChoices : choices;
+
+        let optionsHtml = '<option value="">選擇要改成休息日的日期</option>';
+        usableChoices.forEach(idx => {
+          const d = getDateForDayIndex(idx);
+          const moduleNames = weekData[idx].modules.map(code => code).join(' + ');
+          optionsHtml += `<option value="${idx}">週${DAY_NAMES[idx]} ${formatShortDate(d)}｜${moduleNames}</option>`;
+        });
+
+        const controlsHtml = usableChoices.length ? `
+          <div class="mt-5 pt-4 border-t border-slate-100 text-left">
+            <p class="text-xs font-black text-slate-600 mb-2">今天想運動？把 Rest Day 移到別天</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="randomizeRestDay(${currentDayIndex})" class="bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-200 font-bold py-2.5 rounded-xl text-xs transition">
+                🎲 隨機調整
+              </button>
+              <button onclick="document.getElementById('rest-specific-panel').classList.toggle('hidden')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold py-2.5 rounded-xl text-xs transition">
+                📅 指定休息日
+              </button>
+            </div>
+            <div id="rest-specific-panel" class="hidden mt-2 bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+              <select id="rest-swap-select" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-xs text-slate-700 focus:outline-none">
+                ${optionsHtml}
+              </select>
+              <button onclick="applySpecifiedRestDay(${currentDayIndex})" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg text-xs">
+                套用並重排
+              </button>
+              <p class="text-[10px] text-slate-400 mt-1.5">會把該日原本的整組課表移到今天，該日改為 Rest；本週配額不變。</p>
+            </div>
+          </div>
+        ` : `
+          <p class="mt-4 text-[10px] text-slate-400">目前沒有其他尚未完成的運動日可交換。</p>
+        `;
+
+        container.innerHTML = `
+          <div class="py-5 text-center text-slate-400">
+            <p class="text-3xl mb-1">🧘</p>
+            <p class="text-xs font-bold">這天排定為 Rest Day。</p>
+            ${controlsHtml}
+          </div>
+        `;
+        return;
+      }
+
+      today.modules.forEach(mCode => {
+        const m = MODULE_LIB[mCode];
+        if (!m) return;
+
+        let colorClass = 'bg-emerald-50 border-emerald-200 text-emerald-950';
+        let badgeColor = 'bg-emerald-200 text-emerald-800';
+
+        if (m.type === 'MOVE') {
+          colorClass = 'bg-sky-50 border-sky-200 text-sky-950';
+          badgeColor = 'bg-sky-200 text-sky-800';
+        } else if (m.type === 'FUNCTION') {
+          colorClass = 'bg-amber-50 border-amber-200 text-amber-950';
+          badgeColor = 'bg-amber-200 text-amber-800';
+        }
+
+        let moduleLinksHtml = '';
+        if (m.links && m.links.length > 0) {
+          moduleLinksHtml = '<div class="mt-2 flex flex-wrap gap-1.5">';
+          m.links.forEach(l => {
+            moduleLinksHtml += `<a href="${l.url}" target="_blank" rel="noopener noreferrer" class="inline-block bg-white/90 border border-indigo-100 rounded-lg px-2 py-1 font-bold text-indigo-600 hover:underline text-[11px]">${l.label}</a>`;
+          });
+          moduleLinksHtml += '</div>';
+        }
+        let actionCardsHtml = '';
+        if (m.actions && m.actions.length > 0) {
+          actionCardsHtml = '<div class="mt-2 pt-2 border-t border-black/10 space-y-1.5">';
+          m.actions.forEach(a => {
+            actionCardsHtml += `
+              <div class="bg-white/90 p-2 rounded-lg text-xs">
+                <div class="flex justify-between font-bold text-slate-800">
+                  <span>${a.name}</span>
+                  <span class="text-amber-700">${a.dosage}</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-0.5">💡 ${a.cue}</p>
+                <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="inline-block mt-1 font-bold text-indigo-600 hover:underline text-[11px]">▶ 看專業動作示範</a>
+              </div>
+            `;
+          });
+          actionCardsHtml += '</div>';
+        }
+
+        const card = document.createElement('div');
+        card.className = 'p-3 rounded-xl border flex flex-col gap-1 ' + colorClass;
+        card.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-black px-1.5 py-0.5 rounded ${badgeColor}">${m.type}</span>
+              <h3 class="font-bold text-sm">${m.title}</h3>
+            </div>
+            <span class="text-xs font-semibold px-2 py-0.5 bg-white/80 rounded-md text-slate-600">${m.duration} 分鐘</span>
+          </div>
+          <p class="text-xs opacity-80">${m.desc}</p>
+          ${moduleLinksHtml}
+          ${actionCardsHtml}
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderWeekSchedule() {
+      const container = document.getElementById('week-schedule-container');
+      container.innerHTML = '';
+
+      weekData.forEach((day, idx) => {
+        const isCurrent = idx === currentDayIndex;
+        const card = document.createElement('div');
+        card.onclick = function() {
+          currentDayIndex = idx;
+          render();
+        };
+
+        let activeStyle = isCurrent ? 'bg-indigo-50 border-2 border-indigo-500 shadow-sm' : 'bg-slate-50 border border-slate-100';
+        let modulesTagHtml = '';
+        
+        if (day.completed) {
+          modulesTagHtml = '<span class="text-xs font-bold text-emerald-600">✓ 已完成</span>';
+        } else if (day.isRest && day.modules.length === 0) {
+          modulesTagHtml = '<span class="text-xs text-slate-400">Rest Day</span>';
+        } else {
+          modulesTagHtml = day.modules.map(mCode => {
+            const m = MODULE_LIB[mCode];
+            if (!m) return '';
+            let tagBg = 'bg-emerald-100 text-emerald-800';
+            if (m.type === 'MOVE') tagBg = 'bg-sky-100 text-sky-800';
+            if (m.type === 'FUNCTION') tagBg = 'bg-amber-100 text-amber-800';
+            return `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${tagBg}">${m.code}</span>`;
+          }).join(' ');
+        }
+
+        let totalDuration = 0;
+        day.modules.forEach(mCode => {
+          if (MODULE_LIB[mCode]) totalDuration += MODULE_LIB[mCode].duration;
+        });
+
+        card.className = 'p-2.5 rounded-xl flex justify-between items-center transition cursor-pointer ' + activeStyle;
+        card.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="min-w-[42px]">
+              <span class="block text-xs font-bold ${isCurrent ? 'text-indigo-600' : 'text-slate-500'}">週${DAY_NAMES[idx]}</span>
+              <span class="block text-[9px] ${idx === getTodayIndex() ? 'text-indigo-500 font-bold' : 'text-slate-400'}">${formatShortDate(getDateForDayIndex(idx))}${idx === getTodayIndex() ? ' 今天' : ''}</span>
+            </div>
+            <div class="flex gap-1 flex-wrap">${modulesTagHtml}</div>
+          </div>
+          <span class="text-[10px] text-slate-400 font-medium">${totalDuration > 0 ? totalDuration + ' min' : ''}</span>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderModuleLibrary() {
+      const c = document.getElementById('module-library-container');
+      if (!c) return;
+      c.innerHTML = '';
+      Object.values(MODULE_LIB).forEach(m => {
+        const row = document.createElement('div');
+        let tone = m.type === 'TRAIN' ? 'bg-emerald-50 border-emerald-100' : (m.type === 'MOVE' ? 'bg-sky-50 border-sky-100' : 'bg-amber-50 border-amber-100');
+        let links = '';
+        (m.links || []).forEach(l => links += `<a href="${l.url}" target="_blank" rel="noopener noreferrer" class="inline-block mr-1 mt-1 text-[10px] font-bold text-indigo-600 bg-white border border-indigo-100 rounded px-1.5 py-1">${l.label}</a>`);
+        (m.actions || []).forEach(a => links += `<a href="${a.link}" target="_blank" rel="noopener noreferrer" class="block mt-1 text-[10px] text-indigo-600 hover:underline">▶ ${a.name}｜${a.dosage}</a>`);
+        row.className = `border rounded-xl p-2.5 ${tone}`;
+        row.innerHTML = `<div class="flex justify-between gap-2"><div><div class="text-xs font-black">${m.title}</div><div class="text-[10px] text-slate-500">${m.desc}</div></div><span class="text-[10px] text-slate-400 whitespace-nowrap">${m.duration} min</span></div>${links}`;
+        c.appendChild(row);
+      });
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('history-container');
+      container.innerHTML = '';
+
+      if (historyData.length === 0) {
+        container.innerHTML = '<div class="bg-white p-8 rounded-2xl text-center text-slate-400 border border-slate-100"><p class="text-2xl mb-1">📦</p><p class="text-xs font-medium">目前還沒有歷史紀錄。<br>當週運動結束後點擊「結算存檔」即可儲存！</p></div>';
+        return;
+      }
+
+      historyData.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3';
+
+        let modulesHtml = '';
+        if (Array.isArray(item.completedDays) && item.completedDays.length > 0) {
+          const totalModules = item.completedDays.reduce((n, d) => n + d.modules.length, 0);
+          const dayRows = item.completedDays.map(d => {
+            const tags = d.modules.map(code => {
+              const m = MODULE_LIB[code];
+              if (!m) return `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">${code}</span>`;
+              let cls = 'bg-emerald-100 text-emerald-800';
+              if (m.type === 'FUNCTION') cls = 'bg-amber-100 text-amber-800';
+              if (m.type === 'MOVE') cls = 'bg-sky-100 text-sky-800';
+              return `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${cls}">${code}</span>`;
+            }).join(' ');
+
+            const names = d.modules.map(code => MODULE_LIB[code]?.title || code).join(' ＋ ');
+
+            return `
+              <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[11px] font-black text-slate-600">週${DAY_NAMES[d.day]}</span>
+                    <span class="text-[10px] text-slate-400">${d.date || ''}</span>
+                  </div>
+                  <div class="flex gap-1 flex-wrap justify-end">${tags}</div>
+                </div>
+                <p class="text-[10px] text-slate-500 mt-1">${names}</p>
+              </div>
+            `;
+          }).join('');
+
+          modulesHtml = `
+            <details class="border-t border-slate-100 pt-2">
+              <summary class="cursor-pointer text-xs font-black text-slate-600 flex items-center justify-between">
+                <span>查看本週完成模組</span>
+                <span class="text-[10px] text-slate-400">${totalModules} 個模組</span>
+              </summary>
+              <div class="mt-2 space-y-2">${dayRows}</div>
+            </details>
+          `;
+        } else {
+          modulesHtml = `
+            <div class="border-t border-slate-100 pt-2 text-[10px] text-slate-400">
+              此筆為舊版歷史紀錄，當時尚未儲存個別模組明細。
+            </div>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="flex justify-between items-center border-b pb-2 border-slate-100">
+            <span class="text-xs font-black text-indigo-600">結算日期：${item.dateStr}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full uppercase">${item.mode} 週</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-center pt-1">
+            <div class="bg-emerald-50 p-2 rounded-xl">
+              <p class="text-[10px] text-emerald-800 font-bold">TRAIN</p>
+              <p class="text-sm font-black text-emerald-600">${item.progress.train} / ${item.target.train}</p>
+            </div>
+            <div class="bg-amber-50 p-2 rounded-xl">
+              <p class="text-[10px] text-amber-800 font-bold">FUNCTION</p>
+              <p class="text-sm font-black text-amber-600">${item.progress.function} / ${item.target.function}</p>
+            </div>
+            <div class="bg-sky-50 p-2 rounded-xl">
+              <p class="text-[10px] text-sky-800 font-bold">MOVE</p>
+              <p class="text-sm font-black text-sky-600">${item.progress.move} / ${item.target.move}</p>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 text-right pt-1">當週共完成 ${item.daysCompleted} 天運動</p>
+          ${modulesHtml}
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function saveLocal() {
+      try {
+        localStorage.setItem('daily_workout_data_v12', JSON.stringify({
+          mode: currentMode,
+          weekData: weekData,
+          historyData: historyData,
+          effectiveTargets: effectiveTargets,
+          undoStack: undoStack,
+          isDeloaded: isDeloaded,
+          preDeloadTargets: preDeloadTargets
+        }));
+      } catch(e) {}
+    }
+
+    function render() {
+      normalizeWeekState();
+      renderHeader();
+      renderTodayCard();
+      renderWeekSchedule();
+    }
+
+    (function init() {
+      weekData = generateWeek('normal');
+      
+      try {
+        const raw = localStorage.getItem('daily_workout_data_v12');
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data.mode && TARGETS[data.mode]) currentMode = data.mode;
+          if (Array.isArray(data.historyData)) historyData = data.historyData;
+          if (
+            data.effectiveTargets &&
+            Number.isFinite(data.effectiveTargets.train) &&
+            Number.isFinite(data.effectiveTargets.function) &&
+            Number.isFinite(data.effectiveTargets.move)
+          ) {
+            effectiveTargets = {
+              train: data.effectiveTargets.train,
+              function: data.effectiveTargets.function,
+              move: data.effectiveTargets.move
+            };
+          }
+          if (Array.isArray(data.weekData) && data.weekData.length === 7) {
+            weekData = data.weekData;
+          }
+          if (Array.isArray(data.undoStack)) undoStack = data.undoStack.slice(-20);
+          isDeloaded = !!data.isDeloaded;
+          preDeloadTargets = data.preDeloadTargets || null;
+        }
+      } catch(e) {}
+
+      if (!effectiveTargets) effectiveTargets = { ...(TARGETS[currentMode] || TARGETS.normal) };
+      // 每次打開網頁預設停在真正的今天；仍可點本週總覽回看前一天並使用原有按鈕。
+      currentDayIndex = getTodayIndex();
+      document.getElementById('mode-select').value = currentMode;
+      render();
+    })();
+  </script>
+</body>
+</html>
